@@ -40,3 +40,110 @@ A semantic search system for restaurant reviews using vector embeddings and loca
 1. **Install Python dependencies**:
 ```bash
 pip install openai sentence-transformers qdrant-client pandas
+```
+
+2. **Download llamafile**:
+
+```bash
+wget https://huggingface.co/Mozilla/Llama-3.2-3B-Instruct-llamafile/resolve/main/Llama-3.2-3B-Instruct.Q6_K.llamafile
+chmod +x Llama-3.2-3B-Instruct.Q6_K.llamafile
+```
+
+3. **Start the LLM server**:
+
+```bash
+./Llama-3.2-3B-Instruct.Q6_K.llamafile
+```
+
+## Code Explanation -
+
+ **Main components :-** 
+```bash
+    A[Review Data] --> B[Embedding Generation]
+    
+    B --> C[Qdrant Vector DB]
+    
+    D[User Query] --> B
+    
+    C --> E[Semantic Search]
+    
+    E --> F[Llama-3 LLM]
+    
+    F --> G[Recommendation]
+  ```
+
+## Key Functions
+
+### Data Loading:
+
+```python
+# Load CSV data into DataFrame
+df = pd.read_csv('restaurant_reviews.csv')
+data = df.to_dict('records')
+```
+
+### Embedding Generation:
+
+```python
+encoder = SentenceTransformer('all-MiniLM-L6-v2')
+vector = encoder.encode(review_text).tolist()
+```
+
+### Vector Database Setup:
+
+```python
+qdrant.recreate_collection(
+    collection_name="restaurant_reviews",
+    vectors_config=models.VectorParams(
+        size=384,  # Dimension of all-MiniLM-L6-v2
+        distance=models.Distance.COSINE
+    )
+)
+```
+
+### Semantic Search:
+
+```python
+hits = qdrant.search(
+    collection_name="restaurant_reviews",
+    query_vector=query_embedding,
+    limit=3
+)
+```
+
+### LLM Integration:
+
+```python
+response = client.chat.completions.create(
+    model="Llama-3.2-3B-Instruct",
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_query},
+        {"role": "assistant", "content": str(context)}
+    ],
+    temperature=0.7
+)
+```
+
+### Configuration :
+
+Parameter	Default Value	Description
+collection_name	"restaurant_reviews"	Qdrant collection name
+
+embedding_model	"all-MiniLM-L6-v2"	Sentence Transformer model
+
+llm_base_url	"http://localhost:8080/v1"	Llamafile API endpoint
+
+temperature	0.7	LLM creativity control
+
+max_tokens	500	Maximum response length
+
+
+### Customization
+
+Data: Replace sample data with your CSV file
+
+Prompts: Modify system_prompt in code for different behaviors
+
+Search: Adjust limit and score_threshold in search parameters
+
